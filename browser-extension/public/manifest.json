@@ -1,0 +1,18 @@
+{
+    "manifest_version": 3,
+    "name": "Youtube_Sponsorship_Detector",
+    "version": "1.0.0",
+    "description": "Youtube extension for getting rid of ads",
+    "icons": {
+        "32": "icon32.png"
+    },
+    "action": {
+        "default_popup": "index.html"
+    },
+    "permissions": [
+        "scripting", "activeTab"
+    ],
+    "host_permissions":[
+        "*://*.youtube.com/*"
+    ]
+  }
