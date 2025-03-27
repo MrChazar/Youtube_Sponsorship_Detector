@@ -1,21 +1,53 @@
 import { useState, useEffect } from 'react';
 import './styles/App.css';
+import axios from 'axios';
 
 function App() {
   const [currentUrl, setCurrentUrl] = useState<string>('');
   const [videoTime, setVideoTime] = useState<number | null>(null);
   const [isYoutube, setIsYoutube] = useState<boolean | null>(null);
+  const [timeStamps, setTimeStamps] = useState<number[] | null>(null);
+  const [loadingResponse, setLoadingResponse] = useState<boolean>(false);
+  const [error, setError] = useState<boolean>(false);
+
+  const fetchTimestamps = async (url: string) => {
+    setLoadingResponse(true);
+    setError(false);
+    
+    try {
+      const response = await axios.get(
+        'http://localhost:8000/extension/Generate_Sponsorship_Timestamps', 
+        {
+          params: {
+            yt_url: url,
+          }
+        }
+      );
+      
+      setTimeStamps(response.data);
+      setLoadingResponse(false);
+      return response.data;
+    } catch (error) {
+      console.error("Błąd Axios:", error);
+      setLoadingResponse(false);
+      setError(true);
+      return null;
+    }
+  };
 
   const getCurrentTabInfo = async () => {
     try {
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
       
-      if (tab?.url) {
+      if (tab?.url && tab.url !== currentUrl) {
         setCurrentUrl(tab.url);
-        setIsYoutube(tab.url.includes('youtube.com/watch'));
+        const youtubeCheck = tab.url.includes('youtube.com/watch');
+        setIsYoutube(youtubeCheck);
         
-        if (tab.url.includes('youtube.com/watch')) {
-          // Pobierz czas odtwarzania wideo
+        if (youtubeCheck) {
+          // Pobierz timestampy dla nowego URL
+          await fetchTimestamps(tab.url);
+          
           const results = await chrome.scripting.executeScript({
             target: { tabId: tab.id! },
             func: () => {
@@ -24,14 +56,10 @@ function App() {
             }
           });
           
-          // Jawna obsługa undefined
-          if (results[0].result !== undefined) {
-            setVideoTime(results[0].result); // result może być number lub null
-          } else {
-            setVideoTime(null); // lub inna domyślna wartość
-          }
+          setVideoTime(results[0].result ?? null);
         } else {
           setVideoTime(null);
+          setTimeStamps(null);
         }
       }
     } catch (error) {
@@ -53,19 +81,27 @@ function App() {
       }
     });
     
-      // Jawna obsługa undefined
-      if (results[0].result !== undefined) {
-        setVideoTime(results[0].result); // result może być number lub null
-      } else {
-        setVideoTime(null); // lub inna domyślna wartość
-      }
+    setVideoTime(results[0].result ?? null);
   };
 
+  // Nasłuchuj zmian URL i aktualizacji czasu
   useEffect(() => {
-    getCurrentTabInfo();
+    const checkTabChanges = () => {
+      getCurrentTabInfo();
+    };
+
+    // Sprawdzaj zmiany co sekundę
+    const interval = setInterval(checkTabChanges, 1000);
     
-    // Aktualizuj co sekundę, jeśli to YouTube
+    return () => {
+      clearInterval(interval);
+    };
+  }, []);
+
+  // Aktualizuj czas wideo na YouTube co sekundę
+  useEffect(() => {
     let interval: number;
+    
     if (isYoutube) {
       interval = setInterval(updateVideoTime, 1000);
     }
@@ -75,30 +111,34 @@ function App() {
     };
   }, [isYoutube]);
 
-  const onclick = async () => {
-    let [tab] = await chrome.tabs.query({ active: true });
-    chrome.scripting.executeScript({
-      target: { tabId: tab.id! },
-      func: () => {
-        alert('Modyfikowanie strony');
-        document.body.style.backgroundColor = 'red';
-      }
-    });
-  };
-
   return (
     <>
       <h1>Dodatek</h1>
-      <div className="card">
-        <button onClick={onclick}>
-          Kliknij
-        </button>
-        
+      <div className="card">    
         <div className="tab-info">
           <h3>Informacje o stronie:</h3>
           <p><strong>URL:</strong> {currentUrl || 'Brak danych'}</p>
+          
           {isYoutube && videoTime !== null && (
-            <p><strong>Aktualny czas wideo:</strong> {videoTime} sekund</p>
+            <>
+              <p><strong>Aktualny czas wideo:</strong> {videoTime} sekund</p>
+              <div>
+                <strong>Aktualne TimeStampy:</strong>
+                {loadingResponse ? (
+                  <p>Ładowanie...</p>
+                ) : error ? (
+                  <p className="error">Błąd podczas pobierania timestampów</p>
+                ) : timeStamps ? (
+                  <ul>
+                    {timeStamps.map((ts, index) => (
+                      <li key={index}>{ts} sekund</li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p>Brak timestampów</p>
+                )}
+              </div>
+            </>
           )}
         </div>
       </div>

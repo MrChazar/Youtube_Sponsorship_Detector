@@ -1,3 +1,4 @@
+import os
 import yt_dlp
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -12,6 +13,12 @@ from google.genai import types
 client = genai.Client(api_key="AIzaSyDQrnZwXb0mVx0sViSweNKs_9gWsH9T-u0")
 
 def generate_sponsorship_timestamps(yt_url):
+    try:
+        os.remove("video.mp3")
+        os.remove("video.wav")
+    except:
+        print("wystąpił błąd")
+
     start = time.time()
 
     video_title = "video"
@@ -72,4 +79,12 @@ def generate_sponsorship_timestamps(yt_url):
 
     response_text = response.text.split('|')
     response_text = [a.split(',') for a in response_text]
+
+    try:
+        os.remove("video.mp3")
+        os.remove("video.wav")
+    except:
+        print("wystąpił błąd")
+
+    print(f"Proces zakończony w {time.time() - start}")
     return response_text
