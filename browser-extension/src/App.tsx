@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import './styles/App.css';
 import axios from 'axios';
 
@@ -13,7 +13,6 @@ function App() {
   const fetchTimestamps = async (url: string) => {
     setLoadingResponse(true);
     setError(false);
-    
     try {
       const response = await axios.get(
         'http://localhost:8000/extension/Generate_Sponsorship_Timestamps', 
@@ -27,7 +26,8 @@ function App() {
       setTimeStamps(response.data);
       setLoadingResponse(false);
       return response.data;
-    } catch (error) {
+    } 
+    catch (error) {
       console.error("Błąd Axios:", error);
       setLoadingResponse(false);
       setError(true);
@@ -35,17 +35,36 @@ function App() {
     }
   };
 
+  const applyTimeStamps = async () => {
+    const video = document.querySelector('video');
+    if (!video || !timeStamps) return;
+  
+    const currentTime = video.currentTime;
+    
+    for (const segment of timeStamps) {
+      if (segment.length >= 2) { // Sprawdź czy to prawidłowy segment
+        const [start, end] = segment;
+        
+        // Dodaj mały margines błędu (0.5 sekundy)
+        if (Math.abs(currentTime - start) < 0.5) {
+          video.currentTime = end;
+          console.log(`Pominięto segment ${start}-${end}s`);
+          break; // Przerwij pętlę po znalezieniu pierwszego pasującego segmentu
+        }
+      }
+    }
+  };
+
   const getCurrentTabInfo = async () => {
     try {
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-      
-      if (tab?.url && tab.url !== currentUrl) {
-        setCurrentUrl(tab.url);
+      if (tab?.url && tab.url !== currentUrl.current) {
+        currentUrl.current = tab.url;
         const youtubeCheck = tab.url.includes('youtube.com/watch');
         setIsYoutube(youtubeCheck);
         
         if (youtubeCheck) {
-          // Pobierz timestampy dla nowego URL
+          console.log("STrzał");
           await fetchTimestamps(tab.url);
           
           const results = await chrome.scripting.executeScript({
@@ -55,6 +74,8 @@ function App() {
               return video ? Math.floor(video.currentTime) : null;
             }
           });
+
+
           
           setVideoTime(results[0].result ?? null);
         } else {
@@ -81,6 +102,7 @@ function App() {
       }
     });
     
+    applyTimeStamps()
     setVideoTime(results[0].result ?? null);
   };
 
@@ -97,6 +119,7 @@ function App() {
       clearInterval(interval);
     };
   }, []);
+
 
   // Aktualizuj czas wideo na YouTube co sekundę
   useEffect(() => {
@@ -117,11 +140,12 @@ function App() {
       <div className="card">    
         <div className="tab-info">
           <h3>Informacje o stronie:</h3>
-          <p><strong>URL:</strong> {currentUrl || 'Brak danych'}</p>
+          <p><strong>URL:</strong> {currentUrl.current || 'Brak danych'}</p>
           
           {isYoutube && videoTime !== null && (
             <>
               <p><strong>Aktualny czas wideo:</strong> {videoTime} sekund</p>
+              
               <div>
                 <strong>Aktualne TimeStampy:</strong>
                 {loadingResponse ? (
