@@ -3,10 +3,10 @@ import './styles/App.css';
 import axios from 'axios';
 
 function App() {
-  const [currentUrl, setCurrentUrl] = useState<string>('');
+  const currentUrl = useRef<string>('');
   const [videoTime, setVideoTime] = useState<number | null>(null);
   const [isYoutube, setIsYoutube] = useState<boolean | null>(null);
-  const [timeStamps, setTimeStamps] = useState<number[] | null>(null);
+  const [timeStamps, setTimeStamps] = useState<number[][] | null>(null);
   const [loadingResponse, setLoadingResponse] = useState<boolean>(false);
   const [error, setError] = useState<boolean>(false);
 
@@ -35,24 +35,29 @@ function App() {
     }
   };
 
-  const applyTimeStamps = async () => {
-    const video = document.querySelector('video');
-    if (!video || !timeStamps) return;
-  
-    const currentTime = video.currentTime;
-    
-    for (const segment of timeStamps) {
-      if (segment.length >= 2) { // Sprawdź czy to prawidłowy segment
-        const [start, end] = segment;
+  const applyTimeStamps = async (tabId: number, timeStamps: number[][] | any) => {
+    await chrome.scripting.executeScript({
+      target: { tabId },
+      func: (timestamps) => {
+        const video = document.querySelector('video');
+        console.log("te timestampy", timeStamps)
+        console.log("wideo", video?.currentTime)
+        if (!video || !timestamps) return;
         
-        // Dodaj mały margines błędu (0.5 sekundy)
-        if (Math.abs(currentTime - start) < 0.5) {
-          video.currentTime = end;
-          console.log(`Pominięto segment ${start}-${end}s`);
-          break; // Przerwij pętlę po znalezieniu pierwszego pasującego segmentu
+        const currentTime = video.currentTime;
+        for (const [start, end] of timestamps) {
+          // Margines 0.5s przed rozpoczęciem segmentu
+          console.log("dany moment", start, end)
+          console.log(currentTime)
+          if (currentTime >= start - 0.5 && currentTime < start + 0.5) {
+            video.currentTime = end;
+            console.log(`Skipped segment ${start}-${end}`);
+            break;
+          }
         }
-      }
-    }
+      },
+      args: [timeStamps]
+    });
   };
 
   const getCurrentTabInfo = async () => {
@@ -102,22 +107,14 @@ function App() {
       }
     });
     
-    applyTimeStamps()
     setVideoTime(results[0].result ?? null);
+    console.log(timeStamps)
+    await applyTimeStamps(tab.id, timeStamps);
   };
 
   // Nasłuchuj zmian URL i aktualizacji czasu
   useEffect(() => {
-    const checkTabChanges = () => {
       getCurrentTabInfo();
-    };
-
-    // Sprawdzaj zmiany co sekundę
-    const interval = setInterval(checkTabChanges, 1000);
-    
-    return () => {
-      clearInterval(interval);
-    };
   }, []);
 
 
@@ -154,9 +151,14 @@ function App() {
                   <p className="error">Błąd podczas pobierania timestampów</p>
                 ) : timeStamps ? (
                   <ul>
-                    {timeStamps.map((ts, index) => (
-                      <li key={index}>{ts} sekund</li>
-                    ))}
+                   {timeStamps.map((ts, index) => {
+                    const [start, end] = Array.isArray(ts) ? ts : [0, 0];
+                    return (
+                      <li key={index}>
+                        Moment: {start}, {end}
+                      </li>
+                    );
+                    })}
                   </ul>
                 ) : (
                   <p>Brak timestampów</p>

@@ -87,4 +87,5 @@ def generate_sponsorship_timestamps(yt_url):
         print("wystąpił błąd")
 
     print(f"Proces zakończony w {time.time() - start}")
+    print(f"Proces zwrócił: {response_text}")
     return response_text
