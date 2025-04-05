@@ -6,7 +6,7 @@ function App() {
   const currentUrl = useRef<string>('');
   const [videoTime, setVideoTime] = useState<number | null>(null);
   const [isYoutube, setIsYoutube] = useState<boolean | null>(null);
-  const [timeStamps, setTimeStamps] = useState<number[][] | null>(null);
+  const timeStamps = useRef<number[][] | null>(null);
   const [loadingResponse, setLoadingResponse] = useState<boolean>(false);
   const [error, setError] = useState<boolean>(false);
 
@@ -22,8 +22,8 @@ function App() {
           }
         }
       );
-      
-      setTimeStamps(response.data);
+      console.log("nasze response", response.data)
+      timeStamps.current = response.data;
       setLoadingResponse(false);
       return response.data;
     } 
@@ -36,22 +36,20 @@ function App() {
   };
 
   const applyTimeStamps = async (tabId: number, timeStamps: number[][] | any) => {
+    console.log("Nasze timestampy", timeStamps)
     await chrome.scripting.executeScript({
       target: { tabId },
-      func: (timestamps) => {
+      func: (timestamps: number[][]) => {
         const video = document.querySelector('video');
-        console.log("te timestampy", timeStamps)
-        console.log("wideo", video?.currentTime)
-        if (!video || !timestamps) return;
-        
+        if (!video || !timestamps || !Array.isArray(timestamps)) return;
+  
         const currentTime = video.currentTime;
+  
         for (const [start, end] of timestamps) {
-          // Margines 0.5s przed rozpoczęciem segmentu
-          console.log("dany moment", start, end)
-          console.log(currentTime)
-          if (currentTime >= start - 0.5 && currentTime < start + 0.5) {
+          // Sprawdź, czy jesteśmy wewnątrz któregokolwiek z przedziałów sponsorowanych
+          if (currentTime >= start && currentTime <= end) {
+            console.log(`Wykryto sponsorowany segment: ${start} - ${end}. Przeskakuję...`);
             video.currentTime = end;
-            console.log(`Skipped segment ${start}-${end}`);
             break;
           }
         }
@@ -59,6 +57,8 @@ function App() {
       args: [timeStamps]
     });
   };
+  
+  
 
   const getCurrentTabInfo = async () => {
     try {
@@ -71,7 +71,7 @@ function App() {
         if (youtubeCheck) {
           console.log("STrzał");
           await fetchTimestamps(tab.url);
-          
+          console.log("time", timeStamps)
           const results = await chrome.scripting.executeScript({
             target: { tabId: tab.id! },
             func: () => {
@@ -85,7 +85,6 @@ function App() {
           setVideoTime(results[0].result ?? null);
         } else {
           setVideoTime(null);
-          setTimeStamps(null);
         }
       }
     } catch (error) {
@@ -108,8 +107,8 @@ function App() {
     });
     
     setVideoTime(results[0].result ?? null);
-    console.log(timeStamps)
-    await applyTimeStamps(tab.id, timeStamps);
+    console.log("nasze timestampy", timeStamps)
+    applyTimeStamps(tab.id, timeStamps.current);
   };
 
   // Nasłuchuj zmian URL i aktualizacji czasu
@@ -149,9 +148,9 @@ function App() {
                   <p>Ładowanie...</p>
                 ) : error ? (
                   <p className="error">Błąd podczas pobierania timestampów</p>
-                ) : timeStamps ? (
+                ) : timeStamps.current ? (
                   <ul>
-                   {timeStamps.map((ts, index) => {
+                   {timeStamps.current.map((ts, index) => {
                     const [start, end] = Array.isArray(ts) ? ts : [0, 0];
                     return (
                       <li key={index}>
