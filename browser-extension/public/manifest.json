@@ -14,5 +14,8 @@
     ],
     "host_permissions":[
         "*://*.youtube.com/*"
-    ]
+    ],
+    "background": {
+    "service_worker": "background.js"
+    }
   }
