@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import subprocess
 import soundfile as sf
 import time
+import torch
 import whisper_timestamped as whisper
 # Inicjalizacja Api
 from google import genai
@@ -43,8 +44,10 @@ def generate_sponsorship_timestamps(yt_url):
     subprocess.run(['ffmpeg', '-i', mp3_path, '-ar', '16000', '-ac', '1', wav_path])
 
     audio = whisper.load_audio(f"{video_title}.wav")
-
-    model = whisper.load_model("tiny", device="cuda")
+    if torch.cuda.is_available():
+        model = whisper.load_model("tiny", device="cuda")
+    else:
+        model = whisper.load_model("tiny", device="cpu")
 
     result = whisper.transcribe(model, audio, language="en")
 
