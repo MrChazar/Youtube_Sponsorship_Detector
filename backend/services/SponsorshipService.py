@@ -14,34 +14,32 @@ from google.genai import types
 client = genai.Client(api_key="AIzaSyDQrnZwXb0mVx0sViSweNKs_9gWsH9T-u0")
 
 def generate_sponsorship_timestamps(yt_url):
-    try:
-        os.remove("video.mp3")
-        os.remove("video.wav")
-    except:
-        print("wystąpił błąd")
 
     start = time.time()
+    try:
+        video_title = "video" + str(yt_url.replace("https://www.youtube.com/watch?v=", ""))
+        ydl_opts = {
+            'format': 'bestaudio/best',
+            'outtmpl': f'{video_title}',
+            'postprocessors': [{
+                'key': 'FFmpegExtractAudio',
+                'preferredcodec': 'mp3',
+                'preferredquality': '64',
+            }],
+            'noplaylist': True,
+            'overwrites': True
+        }
 
-    video_title = "video"
-    ydl_opts = {
-        'format': 'bestaudio/best',
-        'outtmpl': f'{video_title}',
-        'postprocessors': [{
-            'key': 'FFmpegExtractAudio',
-            'preferredcodec': 'mp3',
-            'preferredquality': '192',
-        }],
-        'noplaylist': True,
-        'overwrites': True
-    }
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(yt_url, download=False)
+            ydl.download([yt_url])
 
-    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        info = ydl.extract_info(yt_url, download=False)
-        ydl.download([yt_url])
-
-    mp3_path = f'{video_title}.mp3'
-    wav_path = f'{video_title}.wav'
-    subprocess.run(['ffmpeg', '-i', mp3_path, '-ar', '16000', '-ac', '1', wav_path])
+        mp3_path = f'{video_title}.mp3'
+        wav_path = f'{video_title}.wav'
+        subprocess.run(['ffmpeg', '-i', mp3_path, '-ar', '16000', '-ac', '1', wav_path])
+    except:
+        print(f"Wystąpił błąd")
+        return []
 
     audio = whisper.load_audio(f"{video_title}.wav")
     if torch.cuda.is_available():
@@ -84,8 +82,8 @@ def generate_sponsorship_timestamps(yt_url):
     response_text = [a.split(',') for a in response_text]
 
     try:
-        os.remove("video.mp3")
-        os.remove("video.wav")
+        os.remove(f"{video_title}.mp3")
+        os.remove(f"{video_title}.wav")
     except:
         print("wystąpił błąd")
 

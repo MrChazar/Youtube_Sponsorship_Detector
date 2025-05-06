@@ -14,17 +14,20 @@ app.add_middleware(
 )
 
 # Asynchroniczny endpoint dla pobrania sekund
-"""
+
 @app.get("/extension/Generate_Sponsorship_Timestamps")
 async def generate_sponsorship_timestamps(yt_url: str = Query(..., description="Url strony do analizy")):
     data = await asyncio.to_thread(ss.generate_sponsorship_timestamps, yt_url)
     return data
-"""
 
 # Ten sam endpoint do sztywnego testowania dodatku
+"""
 @app.get("/extension/Generate_Sponsorship_Timestamps")
 async def generate_sponsorship_timestamps(yt_url: str = Query(..., description="Url strony do analizy")):
-    return [[95, 166], [1673, 1680]]
+    return [[300, 500]]
+"""
+
+
 
 if __name__ == '__main__':
     import uvicorn
