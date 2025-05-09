@@ -44,7 +44,6 @@ function handleTimeUpdate() {
              console.log(`[Content Script] Wykryto fragment sponsorowany: ${start} - ${end}. Pomijanie...`);
              videoElement.currentTime = end; 
              // Myślałem też żeby dodać jakąś informajcę typu alert że pominięto coś w tym stylu
-             alert("Pominięto fragment!!!!!!!")
              break; 
         }
     }

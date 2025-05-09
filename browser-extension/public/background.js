@@ -24,7 +24,7 @@ async function fetchTimestamps(url) {
 
 // Funkcja do wstrzykiwania skryptu treści i inicjowania go
 async function initializeContentScript(tabId, url) {
-     if (!tabId || !url || !url.startsWith('https://www.youtube.com/watch?')) {
+     if (!tabId || !url || !url.startsWith('https://www.youtube')) {
          console.log("[Background] Nie jest to strona yt");
          delete tabStates[tabId]; // Wyczyść stan dla tej karty, jeśli była YouTube
          return;
@@ -82,10 +82,10 @@ async function initializeContentScript(tabId, url) {
 // Nasłuchiwanie na aktualizacje kart (np. zmiana URL)
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
     
-    if (changeInfo.url && tab.url && tab.url.startsWith('https://www.youtube.com/watch?')) {
+    if (changeInfo.url && tab.url && tab.url.startsWith('https://www.youtube')) {
          // Uruchom proces inicjalizacji dla nowej strony
          initializeContentScript(tabId, tab.url);
-    } else if (changeInfo.url && tabStates[tabId] && tabStates[tabId].isYoutube && !tab.url.startsWith('https://www.youtube.com/watch?')) {
+    } else if (changeInfo.url && tabStates[tabId] && tabStates[tabId].isYoutube && !tab.url.startsWith('https://www.youtube')) {
          // Jeśli zmieniono z YouTube na inną stronę, wyczyść stan
          console.log(`[Background] Karta ${tabId} Znawigowana poza youtube.`);
          delete tabStates[tabId];
@@ -103,7 +103,7 @@ chrome.tabs.onActivated.addListener(activeInfo => {
     chrome.tabs.get(activeInfo.tabId, (tab) => {
         if (tabStates[activeInfo.tabId]) {
             notifyPopups(activeInfo.tabId);
-        } else if (tab && tab.url && tab.url.startsWith('https://www.youtube.com/watch?')) {
+        } else if (tab && tab.url && tab.url.startsWith('https://www.youtube')) {
              // Jeśli przełączamy na kartę YouTube, której nie śledziliśmy (np. po restarcie przeglądarki?)
              // Możemy zainicjalizować ją teraz
              initializeContentScript(activeInfo.tabId, tab.url);
@@ -128,61 +128,83 @@ chrome.tabs.onRemoved.addListener(tabId => {
 
 // Komunikacja: Nasłuchiwanie na wiadomości od innych części rozszerzenia (popup, content script)
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-    console.log("[Background] Otrzymanow wiadomość:", request);
-    const tabId = sender.tab ? sender.tab.id : null;
+    console.log("[Background] Otrzymano wiadomość:", request, "Sender:", sender);
 
     switch (request.type) {
         case 'TIME_UPDATE':
-            // Wiadomość od content script: aktualny czas wideo
+            const tabId = sender.tab?.id;
             if (tabId && tabStates[tabId]) {
                 tabStates[tabId].currentTime = Math.floor(request.currentTime);
-                // w content script w listenerze 'timeupdate'.
-                // Wysłanie danych do popupów, jeśli są otwarte:
                 notifyPopups(tabId);
             }
             break;
 
         case 'REQUEST_DATA':
-            // Wiadomość od popupa: prośba o aktualne dane
-            if (tabId) {
-                // Odpowiedź ze stanem dla aktywnej karty
-                chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-                     if (tabs[0]) {
-                        debugger
-                        console.log("[Background] Dane tabs", tabs[0])
-                         const activeTabId = tabs[0].id;
-                         sendResponse({
-                             type: 'DATA_UPDATE',
-                             data: tabStates[activeTabId] || { url: tabs[0].url, isYoutube: tabs[0].url.startsWith('https://www.youtube.com/watch?'), isLoading: tabs[0].isLoading, hasError: tabs[0].hasError, timestamps: tabs[0].timestamps, currentTime: tabs[0].currentTime }
-                         });
-                     } else {
-                          // Brak aktywnej karty
-                         sendResponse({
-                             type: 'DATA_UPDATE',
-                             data: { url: null, isYoutube: false, isLoading: false, hasError: false, timestamps: null, currentTime: null }
-                         });
-                     }
-                 });
-            } else {
-                 // Jeśli wiadomość nie przyszła z karty (np. z popupu bez tabId),
-                 // musimy znaleźć aktywną kartę, aby pobrać jej stan.
-                 chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-                     if (tabs[0]) {
-                          const activeTabId = tabs[0].id;
-                          sendResponse({
-                              type: 'DATA_UPDATE',
-                              data: tabStates[activeTabId] || { url: tabs[0].url, isYoutube: tabs[0].url.startsWith('https://www.youtube.com/watch?'), isLoading: tabs[0].isLoading, hasError: tabs[0].hasError, timestamps: tabs[0].timestamps, currentTime: tabs[0].currentTime }
-                          });
-                     } else {
-                           // Brak aktywnej karty
-                          sendResponse({
-                              type: 'DATA_UPDATE',
-                              data: { url: null, isYoutube: false, isLoading: false, hasError: false, timestamps: null, currentTime: null }
-                          });
-                     }
-                 });
-            }
-            return true;
+            debugger
+            // Pobierz aktywną kartę, niezależnie od sendera
+            chrome.tabs.query({active: true}, async (tabs) => {
+                if (!tabs[0]) {
+                    debugger
+                    // Brak aktywnej karty
+                    console.log("[Background] Brak aktywnej karty");
+                    sendResponse({
+                        type: 'DATA_UPDATE',
+                        data: {
+                            url: null,
+                            isYoutube: false,
+                            isLoading: false,
+                            hasError: false,
+                            timestamps: null,
+                            currentTime: null
+                        }
+                    });
+                    return;
+                }
+
+                const activeTabId = tabs[0].id;
+                const tabUrl = tabs[0].url;
+
+                // Sprawdź, czy karta to YouTube
+                if (tabUrl.startsWith('https://www.youtube')) {
+                    if (!tabStates[activeTabId]) {
+                        // Karta YouTube nie jest zainicjalizowana – uruchom inicjalizację
+                        console.log("[Background] Inicjalizacja karty YouTube:", activeTabId);
+                        try {
+                            await initializeContentScript(activeTabId, tabUrl);
+                        } catch (error) {
+                            console.error("[Background] Błąd inicjalizacji:", error);
+                        }
+                    }
+                    // Zwróć aktualny stan (lub domyślny, jeśli inicjalizacja trwa)
+                    sendResponse({
+                        type: 'DATA_UPDATE',
+                        data: tabStates[activeTabId] || {
+                            url: tabUrl,
+                            isYoutube: true,
+                            isLoading: true, // Zakładamy, że inicjalizacja trwa
+                            hasError: false,
+                            timestamps: null,
+                            currentTime: null
+                        }
+                    });
+                    notifyPopups(activeTabId);
+                } else {
+                    // Karta nie jest YouTube
+                    console.log("[Background] Karta nie jest YouTube:", tabUrl);
+                    sendResponse({
+                        type: 'DATA_UPDATE',
+                        data: {
+                            url: tabUrl,
+                            isYoutube: false,
+                            isLoading: false,
+                            hasError: false,
+                            timestamps: null,
+                            currentTime: null
+                        }
+                    });
+                }
+            });
+            return true; // Wskazuje, że odpowiedź jest asynchroniczna
     }
 });
 
@@ -191,14 +213,14 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 function notifyPopups(tabIdToSendStateFor) {
      // Możemy wysłać stan dla konkretnej karty, jeśli chcemy, lub dla aktywnej.
      // W tym przypadku, gdy popup jest otwarty, zazwyczaj chcemy stan aktywnej karty.
-     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+     chrome.tabs.query({ active: true }, (tabs) => {
          if (tabs[0]) {
              const activeTabId = tabs[0].id;
              // Wysyłamy wiadomość globalnie, a popupy same sprawdzą, czy są otwarte, jebie się to w przypadku gdy pobierają się timestampy
              // i czy wiadomość jest dla nich istotna (choć tu wysyłamy zawsze stan aktywnej karty)
              chrome.runtime.sendMessage({
                  type: 'DATA_UPDATE',
-                 data: tabStates[activeTabId] || { url: tabs[0].url, isYoutube: tabs[0].url.startsWith('https://www.youtube.com/watch?'), isLoading: tabs[0].isLoading, hasError: tabs[0].hasError, timestamps: tabs[0].timestamps, currentTime: tabs[0].currentTime }
+                 data: tabStates[activeTabId] || { url: tabs[0].url, isYoutube: tabs[0].url.startsWith('https://www.youtube'), isLoading: tabs[0].isLoading, hasError: tabs[0].hasError, timestamps: tabs[0].timestamps, currentTime: tabs[0].currentTime }
              }).catch(error => {
                  // Ignorujemy błędy, jeśli nie ma otwartego popupu
                  if (error.message !== "Nie można ustanowić połączenia.") {
