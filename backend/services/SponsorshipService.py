@@ -20,18 +20,19 @@ def generate_sponsorship_timestamps(yt_url):
         video_title = "video" + str(yt_url.replace("https://www.youtube.com/watch?v=", ""))
         ydl_opts = {
             'format': 'bestaudio/best',
-            'outtmpl': f'{video_title}',
+            'outtmpl': f'{video_title}.%(ext)s',  # zmienna zastąpiona rzeczywistym rozszerzeniem pliku
             'postprocessors': [{
                 'key': 'FFmpegExtractAudio',
-                'preferredcodec': 'mp3',
-                'preferredquality': '64',
+                'preferredcodec': 'wav'
             }],
-            'noplaylist': True,
-            'overwrites': True
+            'postprocessor_args': [
+                '-ar', '16000',  # ustawiamy to 16 kHz
+                '-ac', '1'  # dźwięk mono
+            ],
+            'noplaylist': True
         }
 
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(yt_url, download=False)
             ydl.download([yt_url])
 
         mp3_path = f'{video_title}.mp3'
