@@ -20,7 +20,7 @@ def generate_sponsorship_timestamps(yt_url):
         video_title = "video" + str(yt_url.replace("https://www.youtube.com/watch?v=", ""))
         ydl_opts = {
             'format': 'bestaudio/best',
-            'outtmpl': f'{video_title}.%(ext)s',  # zmienna zastąpiona rzeczywistym rozszerzeniem pliku
+            'outtmpl': f'../videos/{video_title}.%(ext)s',  # zmienna zastąpiona rzeczywistym rozszerzeniem pliku
             'postprocessors': [{
                 'key': 'FFmpegExtractAudio',
                 'preferredcodec': 'wav'
@@ -35,14 +35,14 @@ def generate_sponsorship_timestamps(yt_url):
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             ydl.download([yt_url])
 
-        mp3_path = f'{video_title}.mp3'
-        wav_path = f'{video_title}.wav'
+        mp3_path = f'../videos/{video_title}.mp3'
+        wav_path = f'../videos/{video_title}.wav'
         subprocess.run(['ffmpeg', '-i', mp3_path, '-ar', '16000', '-ac', '1', wav_path])
     except:
         print(f"Wystąpił błąd")
         return []
 
-    audio = whisper.load_audio(f"{video_title}.wav")
+    audio = whisper.load_audio(f"../videos/{video_title}.wav")
     if torch.cuda.is_available():
         model = whisper.load_model("tiny", device="cuda")
     else:
@@ -83,10 +83,18 @@ def generate_sponsorship_timestamps(yt_url):
     response_text = [a.split(',') for a in response_text]
 
     try:
-        os.remove(f"{video_title}.mp3")
-        os.remove(f"{video_title}.wav")
-    except:
-        print("wystąpił błąd")
+        for file in os.listdir("../videos"):
+            if video_title in file:
+                file_path = os.path.join("../videos", file)
+                if os.path.isfile(file_path):
+                    os.remove(file_path)
+                    print(f"Usunięto plik: {file_path}")
+                else:
+                    print(f"{file_path} nie jest plikiem")
+    except FileNotFoundError:
+        print(f"Folder videos nie istnieje")
+    except Exception as e:
+        print(f"Błąd: {e}")
 
     print(f"Proces zakończony w {time.time() - start}")
     print(f"Proces zwrócił: {response_text}")
