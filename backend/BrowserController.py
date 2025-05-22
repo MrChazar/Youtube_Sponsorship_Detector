@@ -18,6 +18,7 @@ app.add_middleware(
 
 @app.get("/extension/Generate_Sponsorship_Timestamps")
 async def generate_sponsorship_timestamps(yt_url: str = Query(..., description="Url strony do analizy")):
+    print(f"STRZAŁ DLA LINKU: {yt_url}")
     data_frame = ds.load_transform_csv("../Linki.txt")
 
     if ds.is_url_processed(yt_url, data_frame) == True:     #link został przetworzony

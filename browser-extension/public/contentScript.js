@@ -1,5 +1,6 @@
 let currentTimestamps = null;
 let videoElement = null;
+let lastUrl = window.location.href;
 
 console.log("[Content Script] Załadowany.");
 
@@ -16,6 +17,23 @@ function findVideo() {
         console.log("[Content Script] Nadal nie znaleziono filmu próbujemy dalej.");
         setTimeout(findVideo, 1000); // Prosta próba ponowienia po 1 sekundzie
     }
+}
+
+function monitorUrlChanges() {
+    const currentUrl = window.location.href;
+    if (currentUrl !== lastUrl && currentUrl.startsWith('https://www.youtube.com/watch?')) {
+        console.log("[Content Script] Wykryto zmianę URL:", currentUrl);
+        lastUrl = currentUrl;
+        // Zresetuj timestampy i powiadom background.js
+        currentTimestamps = null;
+        chrome.runtime.sendMessage({
+            type: 'URL_CHANGED',
+            url: currentUrl
+        });
+        // Ponownie poszukaj elementu wideo, bo może się zmienić
+        findVideo();
+    }
+    setTimeout(monitorUrlChanges, 500); // Sprawdź co 0.5 sekundy
 }
 
 // Funkcja do dodania listenera na 'timeupdate'
@@ -86,6 +104,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
 // Rozpocznij szukanie elementu wideo, gdy skrypt treści zostanie wstrzyknięty
 findVideo();
+monitorUrlChanges();
 
 // Czyste sprzątanie listenera, gdy strona jest usuwana/zmieniana
 window.addEventListener('beforeunload', () => {

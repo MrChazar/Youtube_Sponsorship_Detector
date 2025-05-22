@@ -29,7 +29,9 @@ def generate_sponsorship_timestamps(yt_url):
                 '-ar', '16000',  # ustawiamy to 16 kHz
                 '-ac', '1'  # dźwięk mono
             ],
-            'noplaylist': True
+            'noplaylist': True,
+            'quiet': True,
+            'no_warnings': True
         }
 
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -63,10 +65,32 @@ def generate_sponsorship_timestamps(yt_url):
         You need to identify and mark the entire timestamp range of this sponsored content. Advertisements often span multiple timestamps, so please ensure you capture the entire segment from the beginning to the end of the sponsored segment.
 
         Pay attention to keywords and phrases such as:
-        sponsoring, sponsor, sponsor of our video, our code, and similar indications of sponsorship.
+         sponsoring, sponsor, sponsor of our video, promotion, partnership,
+         sponsored by, promoted by, presented by, brought to you by, 
+         paid for by, powered by,
+         in partnership with, in collaboration with,
+         collab with, partnered with, affiliated with, 
+         gifted by, thanks to [Brand] for,
+         supported by, 
+         And simmiliar signs of sponsorships indications.
 
-        Only return the detected sponsored content in the following format:
-        300,325|452,321
+        Only return the detected sponsored content in the following format when you are 100 percent sure:
+        300,325|326,350
+        
+        If you are not 100 percent sure that video contains sponsored content just return
+        ''
+        
+        examples of return format:
+        300,325|327,389
+        ''
+        100,123
+        23,67|70,120
+        2,12|14,25|123,200
+        ''
+        2,25|51,210
+        ''
+        45,214|323,521|533,600
+        ''
         """
 
     response = client.models.generate_content(
@@ -78,9 +102,11 @@ def generate_sponsorship_timestamps(yt_url):
             system_instruction=sys_instruct
         )
     )
-
-    response_text = response.text.split('|')
-    response_text = [a.split(',') for a in response_text]
+    print(f"Gemini zwrócił {response}")
+    response_text = []
+    if response.text != "''":
+        response_text = response.text.split('|')
+        response_text = [a.split(',') for a in response_text]
 
     try:
         for file in os.listdir("../videos"):
