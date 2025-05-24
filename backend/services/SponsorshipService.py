@@ -17,7 +17,7 @@ def generate_sponsorship_timestamps(yt_url):
 
     start = time.time()
     try:
-        video_title = "video" + str(yt_url.replace("https://www.youtube.com/watch?v=", ""))
+        video_title = "video" + yt_url
         ydl_opts = {
             'format': 'bestaudio/best',
             'outtmpl': f'../videos/{video_title}.%(ext)s',  # zmienna zastąpiona rzeczywistym rozszerzeniem pliku
@@ -35,7 +35,7 @@ def generate_sponsorship_timestamps(yt_url):
         }
 
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            ydl.download([yt_url])
+            ydl.download(["youtube.com/watch?v="+yt_url])
 
         mp3_path = f'../videos/{video_title}.mp3'
         wav_path = f'../videos/{video_title}.wav'
@@ -64,20 +64,13 @@ def generate_sponsorship_timestamps(yt_url):
 
         You need to identify and mark the entire timestamp range of this sponsored content. Advertisements often span multiple timestamps, so please ensure you capture the entire segment from the beginning to the end of the sponsored segment.
 
-        Pay attention to keywords and phrases such as:
-         sponsoring, sponsor, sponsor of our video, promotion, partnership,
-         sponsored by, promoted by, presented by, brought to you by, 
-         paid for by, powered by,
-         in partnership with, in collaboration with,
-         collab with, partnered with, affiliated with, 
-         gifted by, thanks to [Brand] for,
-         supported by, 
-         And simmiliar signs of sponsorships indications.
+        Pretty please pay attention to the words associated with the ads, and take into account any kind of introduction to the ad that makes the ad fit more into the video.
+       
 
-        Only return the detected sponsored content in the following format when you are 100 percent sure:
+        I beg you return only the detected sponsored content in the following format when you are 100 percent sure:
         300,325|326,350
         
-        If you are not 100 percent sure that video contains sponsored content just return
+        If you are not 100 percent sure that video contains sponsored content please just return
         ''
         
         examples of return format:
@@ -102,7 +95,7 @@ def generate_sponsorship_timestamps(yt_url):
             system_instruction=sys_instruct
         )
     )
-    print(f"Gemini zwrócił {response}")
+    print(f"Gemini zwrócił {response.text}")
     response_text = []
     if response.text != "''":
         response_text = response.text.split('|')

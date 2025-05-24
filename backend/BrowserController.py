@@ -20,17 +20,16 @@ app.add_middleware(
 async def generate_sponsorship_timestamps(yt_url: str = Query(..., description="Url strony do analizy")):
     print(f"STRZAŁ DLA LINKU: {yt_url}")
     data_frame = ds.load_transform_csv("../Linki.txt")
-
-    if ds.is_url_processed(yt_url, data_frame) == True:     #link został przetworzony
-        url = ds.find_url_core(yt_url)
-        value = data_frame.loc[data_frame.iloc[:, 0] == url, data_frame.columns[1]].values
+    processed_url = ds.find_url_core(yt_url)
+    if ds.is_url_processed(processed_url, data_frame) == True:     #link został przetworzony
+        value = data_frame.loc[data_frame.iloc[:, 0] == processed_url, data_frame.columns[1]].values
         value = value[0]
 
-        data = value # zwrócony finalny wynik jako lista krotek timestampów
+        data = value
         return data
 
     else:
-        data = await asyncio.to_thread(ss.generate_sponsorship_timestamps, yt_url)
+        data = await asyncio.to_thread(ss.generate_sponsorship_timestamps, processed_url)
 
         time_stamps = []
         for elem in data:
@@ -39,7 +38,7 @@ async def generate_sponsorship_timestamps(yt_url: str = Query(..., description="
 
         url = ds.find_url_core(yt_url)
 
-        new_line = f"https://youtu.be/{url},{time_stamps}\n"
+        new_line = f"https://youtube.com/watch?v={url},{time_stamps}\n"
 
         with open("../Linki.txt", "a", encoding="utf-8") as file:
             file.write(new_line)

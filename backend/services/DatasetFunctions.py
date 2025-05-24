@@ -39,7 +39,6 @@ def load_transform_csv(csv_path):
     return df
 
 def is_url_processed(url, dataframe):
-    url = find_url_core(url)
     if url in dataframe.iloc[:,0].values:
         return True
     else:
