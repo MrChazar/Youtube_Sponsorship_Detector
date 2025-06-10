@@ -49,4 +49,112 @@
     background-color: #f5f5f5;
     color: black;
   }
+
+  .popup-container {
+    width: 300px;
+    padding: 15px;
+    font-family: 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', sans-serif;
+    color: #333;
+    background-color: #f9f9f9;
+}
+
+.popup-title {
+    font-size: 18px;
+    text-align: center;
+    margin-bottom: 20px;
+    color: #ff0000;
+    border-bottom: 2px solid #ff0000;
+    padding-bottom: 8px;
+}
+
+.info-section {
+    background-color: white;
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 15px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    border: 1px solid #e0e0e0;
+}
+
+.section-title {
+    font-size: 16px;
+    margin-top: 0;
+    margin-bottom: 12px;
+    color: #ff0000;
+}
+
+.info-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+}
+
+.info-item {
+    display: flex;
+    flex-direction: column;
+}
+
+.info-label {
+    font-weight: bold;
+    font-size: 13px;
+    color: #666;
+}
+
+.info-value {
+    font-size: 14px;
+    word-break: break-all;
+}
+
+.info-value.url {
+    color: #1a73e8;
+}
+
+.timestamps-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.timestamp-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 10px;
+    margin-bottom: 6px;
+    background-color: #fff8f8;
+    border-radius: 4px;
+    border-left: 3px solid #ff0000;
+}
+
+.timestamp-range {
+    font-weight: 500;
+}
+
+.timestamp-duration {
+    color: #666;
+    font-size: 0.9em;
+}
+
+.loading {
+    color: #666;
+    text-align: center;
+    padding: 10px;
+    font-style: italic;
+}
+
+.error-message {
+    color: #d32f2f;
+    background-color: #ffebee;
+    padding: 10px;
+    border-radius: 4px;
+    text-align: center;
+}
+
+.no-sponsors {
+    color: #388e3c;
+    background-color: #e8f5e9;
+    padding: 10px;
+    border-radius: 4px;
+    text-align: center;
+    font-weight: 500;
+}
   

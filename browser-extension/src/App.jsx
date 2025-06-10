@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react';
-import '../src/App.css'; // Upewnij się, że ścieżka jest poprawna
+import '../src/App.css';
 
 function App() {
-    // Stan popupa odzwierciedla dane otrzymane ze skryptu w tle background
     const [currentTabState, setCurrentTabState] = useState({
         url: null,
         isYoutube: false,
@@ -12,7 +11,6 @@ function App() {
         currentTime: null
     });
 
-    // Nasłuchiwanie na wiadomości od skryptu w tle background
     useEffect(() => {
         console.log("[Popup] Dodanie nasłuchiwania wiadomości.");
         const handleMessage = (request, sender, sendResponse) => {
@@ -24,75 +22,80 @@ function App() {
 
         chrome.runtime.onMessage.addListener(handleMessage);
 
-        //Jak otwieramy pop-up to poproś o dane
         chrome.runtime.sendMessage({ type: 'REQUEST_DATA' }).catch(error => {
-             // Złap błąd, jeśli Service Worker jeszcze się nie uruchomił lub jest uśpiony
             console.warn("[Popup] Błąd podczas próby pobrania danych z skryptu background:", error);
-             setCurrentTabState({
-                 url: "Błąd ładowania...",
-                 isYoutube: false,
-                 isLoading: false,
-                 hasError: true,
-                 timestamps: null,
-                 currentTime: null
-             });
-         });
+            setCurrentTabState({
+                url: "Błąd ładowania...",
+                isYoutube: false,
+                isLoading: false,
+                hasError: true,
+                timestamps: null,
+                currentTime: null
+            });
+        });
 
-
-        // Funkcja czyszcząca listener po zamknięciu popupa
         return () => {
-             console.log("[Popup] Usunięcie nasłuchiwania.");
+            console.log("[Popup] Usunięcie nasłuchiwania.");
             chrome.runtime.onMessage.removeListener(handleMessage);
         };
-    }, []); // Ta pusta tablica oznacza że ten kod uruchomi się tylko raz na początku działania kodu
+    }, []);
 
-    // Rozpakowywanie stanu
     const { url, isYoutube, isLoading, hasError, timestamps, currentTime } = currentTabState;
 
     return (
-        <>
-            <h1>Yotube Sponsorship Detector</h1>
-            <div className="card">
-                <div className="tab-info">
-                    <h3>Informacje o stronie:</h3>
-                    <p><strong>URL:</strong> {url || 'Brak danych'}</p>
-
-                    {isYoutube ? (
-                        <>
-                            <p><strong>Strona YouTube:</strong> Tak</p>
-                            {currentTime !== null && (
-                                <p><strong>Aktualny czas wideo:</strong> {currentTime} sekund</p>
-                            )}
-
-                            <div>
-                                <strong>Timestampy sponsorowane:</strong>
-                                {isLoading ? (
-                                    <p>Ładowanie...</p>
-                                ) : hasError ? (
-                                    <p className="error">Błąd podczas pobierania timestampów</p>
-                                ) : timestamps && timestamps.length > 0 ? (
-                                    <ul>
-                                        {timestamps.map((ts, index) => {
-                                            const [start, end] = Array.isArray(ts) && ts.length >= 2 ? ts : [0, 0];
-                                            return (
-                                                <li key={index}>
-                                                    Segment: {start}s - {end}s
-                                                </li>
-                                            );
-                                        })}
-                                    </ul>
-                                ) : (
-                                    <p>Brak wykrytych segmentów sponsorowanych dla tego filmu.</p>
-                                )}
-                            </div>
-                        </>
-                    ) : (
-                        <p>Brak szczegółów</p>
-                    )}
+        <div className="popup-container">
+            <h1 className="popup-title">YouTube Sponsorship Detector</h1>
+            
+            <div className="info-section">
+                <h2 className="section-title">Informacje o stronie</h2>
+                <div className="info-grid">
+                    <div className="info-item">
+                        <span className="info-label">URL:</span>
+                        <span className="info-value url">{url || 'Brak danych'}</span>
+                    </div>
+                    <div className="info-item">
+                        <span className="info-label">Strona YouTube:</span>
+                        <span className="info-value">{isYoutube ? 'Tak' : 'Nie'}</span>
+                    </div>
                 </div>
             </div>
-        </>
+
+            {isYoutube && (
+                <>
+                    <div className="info-section">
+                        <h2 className="section-title">Segmenty sponsorowane</h2>
+                        {isLoading ? (
+                            <div className="loading">Ładowanie danych...</div>
+                        ) : hasError ? (
+                            <div className="error-message">❌ Błąd podczas pobierania timestampów</div>
+                        ) : timestamps && timestamps.length > 0 ? (
+                            <ul className="timestamps-list">
+                                {timestamps.map((ts, index) => {
+                                    const [start, end] = Array.isArray(ts) && ts.length >= 2 ? ts : [0, 0];
+                                    return (
+                                        <li key={index} className="timestamp-item">
+                                            <span className="timestamp-range">
+                                                {formatTime(start)} - {formatTime(end)}
+                                            </span>
+                                        </li>
+                                    );
+                                })}
+                            </ul>
+                        ) : (
+                            <div className="no-sponsors">🎉 Brak wykrytych segmentów sponsorowanych!</div>
+                        )}
+                    </div>
+                </>
+            )}
+        </div>
     );
+}
+
+// Funkcja pomocnicza do formatowania czasu
+function formatTime(seconds) {
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
 }
 
 export default App;
