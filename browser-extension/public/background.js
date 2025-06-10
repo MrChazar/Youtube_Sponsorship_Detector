@@ -15,7 +15,8 @@ async function fetchTimestamps(url) {
 
         const data = await response.json();
         console.log("[Background] Pobrane timestampy:", data);
-        return data; 
+        return [data.data || [], data.likes_dislikes[0], data.likes_dislikes[1]];
+        
     } catch (error) {
         console.error("[Background] Błąd pobierania timestampów:", error);
         throw error; 
@@ -39,7 +40,9 @@ async function initializeContentScript(tabId, url) {
          isLoading: true,
          hasError: false,
          timestamps: null,
-         currentTime: null // Czas będzie aktualizowany przez content script
+         currentTime: null, // Czas będzie aktualizowany przez content script
+         likes: null,
+         dislikes: null
      };
 
      // Poinformuj popup o nowym stanie ładowania
@@ -54,10 +57,12 @@ async function initializeContentScript(tabId, url) {
          console.log(`[Background] contentScript.js wstrzyknięty do karty: ${tabId}`);
 
          // Pobierz timestampy po wstrzyknięciu skryptu
-         const timestamps = await fetchTimestamps(url);
+         const data = await fetchTimestamps(url);
+         tabStates[tabId].timestamps = data[0];  
+         tabStates[tabId].likes = data[1];       
+         tabStates[tabId].dislikes = data[2];
 
          // Zaktualizuj stan z timestampami
-         tabStates[tabId].timestamps = timestamps;
          tabStates[tabId].isLoading = false;
          tabStates[tabId].hasError = false;
 
@@ -155,7 +160,9 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                             isLoading: false,
                             hasError: false,
                             timestamps: null,
-                            currentTime: null
+                            currentTime: null,
+                            likes: null,
+                            dislikes: null
                         }
                     });
                     return;
@@ -184,7 +191,9 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                             isLoading: true, // Zakładamy, że inicjalizacja trwa
                             hasError: false,
                             timestamps: null,
-                            currentTime: null
+                            currentTime: null,
+                            likes: null,
+                            dislikes: null
                         }
                     });
                     notifyPopups(activeTabId);
@@ -199,7 +208,9 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                             isLoading: false,
                             hasError: false,
                             timestamps: null,
-                            currentTime: null
+                            currentTime: null,
+                            likes: null,
+                            dislikes: null
                         }
                     });
                 }
@@ -220,7 +231,7 @@ function notifyPopups(tabIdToSendStateFor) {
              // i czy wiadomość jest dla nich istotna (choć tu wysyłamy zawsze stan aktywnej karty)
              chrome.runtime.sendMessage({
                  type: 'DATA_UPDATE',
-                 data: tabStates[activeTabId] || { url: tabs[0].url, isYoutube: tabs[0].url.startsWith('https://www.youtube'), isLoading: tabs[0].isLoading, hasError: tabs[0].hasError, timestamps: tabs[0].timestamps, currentTime: tabs[0].currentTime }
+                 data: tabStates[activeTabId] || { url: tabs[0].url, isYoutube: tabs[0].url.startsWith('https://www.youtube'), isLoading: tabs[0].isLoading, hasError: tabs[0].hasError, timestamps: tabs[0].timestamps, currentTime: tabs[0].currentTime, likes: tabs[0].likes, dislikes: tabs[0].dislikes }
              }).catch(error => {
                  // Ignorujemy błędy, jeśli nie ma otwartego popupu
                  if (error.message !== "Nie można ustanowić połączenia.") {
@@ -231,7 +242,7 @@ function notifyPopups(tabIdToSendStateFor) {
               // Brak aktywnej karty - np. wszystkie okna zamknięte oprócz okna rozszerzenia
               chrome.runtime.sendMessage({
                   type: 'DATA_UPDATE',
-                  data: { url: null, isYoutube: false, isLoading: false, hasError: false, timestamps: null, currentTime: null }
+                  data: { url: null, isYoutube: false, isLoading: false, hasError: false, timestamps: null, currentTime: null, likes: null, dislikes: null }
               }).catch(error => {
                   if (error.message !== "Nie można ustanowić połączenia.") {
                       console.warn("[Background] Błąd wysyłania wiadomości do pop up.", error);

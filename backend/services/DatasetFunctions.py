@@ -25,18 +25,41 @@ def convert_str_to_lst(string):
     except (SyntaxError, ValueError):
         print("Błędny format stringa.")
 
+
 def load_transform_csv(csv_path):
     with open(csv_path, 'r', encoding='utf-8') as file:
         rows = []
-        lines = file.readlines()[1:]         # nagłówki
+        lines = file.readlines()[1:]  # pomiń nagłówek jeśli istnieje
         for line in lines:
-            row = split_first_comma(line.strip())
-            row[0] = find_url_core(row[0])
-            row[1] = convert_str_to_lst(row[1])
-            rows.append(row)
+            line = line.strip()
+            if not line:  # pomiń puste linie
+                continue
 
-    df = pd.DataFrame(rows, columns=["link", "timestamps"])
-    return df
+            # Podziel linię na części
+            parts = line.split(',', 2)  # dzielimy na max 3 części
+
+            # Wyciągnij core URL
+            url_core = find_url_core(parts[0])
+
+            # Parsuj timestamps
+            timestamps = []
+            if len(parts) > 1:
+                try:
+                    timestamps = ast.literal_eval(parts[1]) if parts[1].strip() else []
+                except:
+                    timestamps = []
+
+            # Parsuj like/dislike (domyślnie [0,0])
+            likes_dislikes = [0, 0]
+            if len(parts) > 2:
+                try:
+                    likes_dislikes = ast.literal_eval(parts[2]) if parts[2].strip() else [0, 0]
+                except:
+                    likes_dislikes = [0, 0]
+
+            rows.append([url_core, timestamps, likes_dislikes])
+
+    return pd.DataFrame(rows, columns=["link", "timestamps", "likes_dislikes"])
 
 def is_url_processed(url, dataframe):
     if url in dataframe.iloc[:,0].values:

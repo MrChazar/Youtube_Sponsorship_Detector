@@ -40,7 +40,7 @@ function App() {
         };
     }, []);
 
-    const { url, isYoutube, isLoading, hasError, timestamps, currentTime } = currentTabState;
+    const { url, isYoutube, isLoading, hasError, timestamps, currentTime, likes, dislikes } = currentTabState;
 
     return (
         <div className="popup-container">
@@ -76,6 +76,12 @@ function App() {
                                         <li key={index} className="timestamp-item">
                                             <span className="timestamp-range">
                                                 {formatTime(start)} - {formatTime(end)}
+                                            </span>
+                                            <span>
+                                                Likes:{likes}
+                                            </span>
+                                            <span>
+                                                Dislikes:{dislikes}
                                             </span>
                                         </li>
                                     );
