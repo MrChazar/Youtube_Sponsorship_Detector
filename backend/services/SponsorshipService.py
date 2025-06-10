@@ -53,7 +53,7 @@ def generate_sponsorship_timestamps(yt_url):
         for row in word_row['words']:
             text += f"Time: ({row['start']}, {row['end']}) Text:({row['text']})\n"
     sys_instruct = """
-        Detect sponsored content within a youtube video based on the timestamps of its english audio track. The audio track will be provided word by word in the format: [Time: (0.18, 0.56) Text:(Word1)]\n [Time: (0.18, 0.56) Text:(Word2)]\n.
+        Your task is to detect sponsored content within a youtube video based on the timestamps of its English audio track. The audio track will be provided word by word in the format: [Time: (0.18, 0.56) Text:(Word1)]\n [Time: (0.18, 0.56) Text:(Word2)]\n.
 
         Sponsored content is defined as instances where the YouTuber shifts the topic of their video to advertise or promote a product.
 
